@@ -1,0 +1,39 @@
+pipeline {
+  agent any
+  environment {
+    DOCKERHUB_CREDENTIALS = credentials('docker')
+    DOCKERHUB_IMAGE = "API_REST_FIREBASE_DOCKERHUB_IMAGE_$BRANCH_NAME"
+    DOCKERHUB_TAG = "API-REST-FIREBASE-${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
+    AZURE_MODEL = "AZURE_MODEL_$BRANCH_NAME"
+    AZURE_PLAN = "AZURE_PLAN_$BRANCH_NAME"
+    AZURE_NAME = "API_REST_FIREBASE_AZURE_NAME_$BRANCH_NAME"
+    SERVICE = "SERVICE_$BRANCH_NAME"
+    BRANCH = "$BRANCH_NAME"
+ 
+  }
+  stages {
+
+    
+    stage('Build image') {
+      steps {
+     
+        sh "docker build -t ${env[env.DOCKERHUB_IMAGE]}:${DOCKERHUB_TAG} ."
+        sh "docker login -u ${DOCKERHUB_CREDENTIALS_USR} -p ${DOCKERHUB_CREDENTIALS_PSW}"
+        sh "docker push ${env[env.DOCKERHUB_IMAGE]}:${DOCKERHUB_TAG}"
+        sh "docker rmi ${env[env.DOCKERHUB_IMAGE]}:${DOCKERHUB_TAG}"
+      }
+    }
+        stage('Deploy') {
+  steps {
+    build job: 'api-rest-deploy', parameters: [
+      string(name: 'DOCKERHUB_TAG', value: env.DOCKERHUB_TAG),
+      string(name: 'AZURE_MODEL', value: "${env[env.AZURE_MODEL]}"),
+      string(name: 'AZURE_PLAN', value: "${env[env.AZURE_PLAN]}"),
+      string(name: 'AZURE_NAME', value: "${env[env.AZURE_NAME]}"),
+      string(name: 'DOCKERHUB_IMAGE', value: "${env[env.DOCKERHUB_IMAGE]}"),
+      string(name: 'SERVICE', value: "${env[env.SERVICE]}"),
+    ]
+  }
+}
+  }
+}
